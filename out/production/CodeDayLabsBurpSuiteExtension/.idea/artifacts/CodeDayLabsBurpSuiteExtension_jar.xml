@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="CodeDayLabsBurpSuiteExtension:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/CodeDayLabsBurpSuiteExtension_jar</output-path>
+    <root id="archive" name="CodeDayLabsBurpSuiteExtension.jar">
+      <element id="module-output" name="CodeDayLabsBurpSuiteExtension" />
+    </root>
+  </artifact>
+</component>
