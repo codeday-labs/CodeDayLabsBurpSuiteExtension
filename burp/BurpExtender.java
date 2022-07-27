@@ -134,7 +134,7 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         switch (columnIndex)
         {
             case 0:
-                return callbacks.getToolName(logEntry.tool);
+                return logEntry.url.getPath(); //callbacks.getToolName(logEntry.tool);
             case 1:
                 return logEntry.url.toString();
             default:
