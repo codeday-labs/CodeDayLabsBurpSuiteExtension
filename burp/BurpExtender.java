@@ -22,7 +22,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener {
         if (messageIsRequest) {
             this.debug.println("Intercepted Request!");
         } else {
-            this.debug.println("Intercepted Response");
+            this.debug.println("You entered incorrect input");
         }
     }
 }
