@@ -2,6 +2,7 @@ package burp;
 
 import java.awt.*;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
@@ -134,7 +135,8 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         switch (columnIndex)
         {
             case 0:
-                return logEntry.url.getPath(); //callbacks.getToolName(logEntry.tool);
+                String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
+                return s; //callbacks.getToolName(logEntry.tool);
             case 1:
                 return logEntry.url.toString();
             default:
