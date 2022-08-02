@@ -10,6 +10,8 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 
 public class BurpExtender extends AbstractTableModel implements IBurpExtender, IHttpListener, ITab, IMessageEditorController {
+    private String type;
+    private String id;
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
     private JSplitPane splitPane;
@@ -18,6 +20,11 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private IMessageEditor responseViewer;
     private final List<LogEntry> log = new ArrayList<LogEntry>();
     private IHttpRequestResponse currentlyDisplayedItem;
+
+    public BurpExtender(String type, String id) {
+        this.type = type;
+        this.id = id;
+    }
 
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
         this.callbacks = callbacks;
@@ -203,5 +210,8 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             this.requestResponse = requestResponse;
             this.url = url;
         }
+    }public void getRequest(String index, String type, String id) {
+        this.type = type;
+        this.id = id;
     }
 }
