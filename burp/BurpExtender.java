@@ -10,14 +10,15 @@ import javax.swing.table.TableModel;
 
 public class BurpExtender extends AbstractTableModel implements IBurpExtender, IHttpListener, ITab, IMessageEditorController {
     private final List<LogEntry> log1 = new ArrayList<LogEntry>();
-    private final List<String> log2 = new ArrayList<String>() { // some sample data
-
-        {
-
-        }
-    };
-    private final Table logTable1 = new Table(BurpExtender.this, "", log1);
-    private final Table2 logTable2 = new Table2(new MyTableModel(), "", log2);
+    private final List<LogEntry> log2 = new ArrayList<LogEntry>();
+//    private final List<String> log2 = new ArrayList<String>() { // some sample data
+//
+//        {
+//
+//        }
+//    };
+    private final Table logTable1 = new Table(BurpExtender.this, "log table 1", log1);
+    private final Table2 logTable2 = new Table2(new MyTableModel(), "log table 2", log2);
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
     private JSplitPane splitPane;
@@ -42,8 +43,8 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
                 // table of log entries
                 JScrollPane scrollPane = new JScrollPane(logTable1);
                 JScrollPane scrollPane2 = new JScrollPane(logTable2);
-                splitPane.setLeftComponent(scrollPane);
-                splitPane.setRightComponent(scrollPane2);
+                splitPane.setTopComponent(scrollPane);
+                splitPane.setBottomComponent(scrollPane2);
                 // tabs with request/response viewers
                 JTabbedPane tabs = new JTabbedPane();
                 requestViewer = callbacks.createMessageEditor(BurpExtender.this, false);
@@ -87,6 +88,12 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             synchronized (logTable1.table_log) {
                 int row = logTable1.table_log.size();
                 logTable1.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
+                        helpers.analyzeRequest(messageInfo).getUrl()));
+                fireTableRowsInserted(row, row);
+            }
+            synchronized (logTable2.table_log) {
+                int row = logTable2.table_log.size();
+                logTable2.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
                         helpers.analyzeRequest(messageInfo).getUrl()));
                 fireTableRowsInserted(row, row);
             }
@@ -178,9 +185,7 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         //
 
         @Override
-        public int getRowCount() {
-            return log2.size();
-        }
+        public int getRowCount() { return log2.size(); }
 
         @Override
         public int getColumnCount() {
@@ -191,7 +196,7 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         public String getColumnName(int columnIndex) {
             switch (columnIndex) {
                 case 0:
-                    return "Http Response";
+                    return "HTTP Response";
 //            case 1:
 //                return "URL";
                 default:
@@ -207,11 +212,21 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             // Adele note: ignoring rowIndex for now
+            LogEntry logEntry = log2.get(rowIndex);
 
-            return log2.get(rowIndex);
+            switch (columnIndex) {
+                case 0:
+                    String s = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
+                    return s; //callbacks.getToolName(logEntry.tool);
+                case 1:
+                    return logEntry.url.toString();
+                default:
+                    return "";
 
+                //return log2.get(rowIndex);
+
+            }
         }
-
     }
 
     private class Table extends JTable {
@@ -243,9 +258,9 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
     private class Table2 extends JTable {
         public String tableName;
-        public List<String> table_log;
+        public List<LogEntry> table_log;
 
-        public Table2(TableModel tableModel, String tableName, List<String> log) {
+        public Table2(TableModel tableModel, String tableName, List<LogEntry> log) {
             super(tableModel);
             this.tableName = tableName;
             this.table_log = log;
@@ -255,10 +270,11 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         @Override
         public void changeSelection(int row, int col, boolean toggle, boolean extend) {
             // show the log entry for the selected row
-            String row_data = this.table_log.get(row);
-            requestViewer.setMessage(row_data.getBytes(), true);
-            responseViewer.setMessage(row_data.getBytes(), false);
-//            currentlyDisplayedItem = row_data;
+            LogEntry logEntry = this.table_log.get(row);
+            //String row_data = this.table_log.get(row);
+            requestViewer.setMessage(logEntry.requestResponse.getRequest(), true);
+            responseViewer.setMessage(logEntry.requestResponse.getResponse(), false);
+            currentlyDisplayedItem = logEntry.requestResponse;
 
             super.changeSelection(row, col, toggle, extend);
         }
