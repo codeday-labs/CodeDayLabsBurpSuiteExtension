@@ -9,14 +9,9 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 
 public class BurpExtender extends AbstractTableModel implements IBurpExtender, IHttpListener, ITab, IMessageEditorController {
-    private final List<LogEntry> log1 = new ArrayList<LogEntry>();
-    private final List<LogEntry> log2 = new ArrayList<LogEntry>();
-//    private final List<String> log2 = new ArrayList<String>() { // some sample data
-//
-//        {
-//
-//        }
-//    };
+    private final List<LogEntry> log1 = new ArrayList<>();
+    private final List<LogEntry> log2 = new ArrayList<>();
+
     private final Table logTable1 = new Table(BurpExtender.this, "log table 1", log1);
     private final Table2 logTable2 = new Table2(new MyTableModel(), "log table 2", log2);
     private IBurpExtenderCallbacks callbacks;
@@ -116,13 +111,11 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
     @Override
     public String getColumnName(int columnIndex) {
-        switch (columnIndex) {
-            case 0:
-                return "API Routes";
-//            case 1:
-//                return "URL";
-            default:
-                return "";
+        if (columnIndex == 0) {
+            return "API Routes";
+        }
+        else {
+            return "";
         }
     }
 
@@ -135,14 +128,12 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     public Object getValueAt(int rowIndex, int columnIndex) {
         LogEntry logEntry = log1.get(rowIndex);
 
-        switch (columnIndex) {
-            case 0:
-                String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
-                return s; //callbacks.getToolName(logEntry.tool);
-            case 1:
-                return logEntry.url.toString();
-            default:
-                return "";
+        if (columnIndex == 0) {
+            String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
+            return s; //callbacks.getToolName(logEntry.tool);
+        }
+        else {
+            return "";
         }
     }
 
@@ -173,19 +164,17 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         }
     }
 
-        //
 // extend JTable to handle cell selection
-//
 
     // Table for 2nd log set to use
     public class MyTableModel extends AbstractTableModel {
 
-        //
         // extend AbstractTableModel
-        //
 
         @Override
-        public int getRowCount() { return log2.size(); }
+        public int getRowCount() {
+            return log2.size();
+        }
 
         @Override
         public int getColumnCount() {
@@ -194,13 +183,10 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
         @Override
         public String getColumnName(int columnIndex) {
-            switch (columnIndex) {
-                case 0:
-                    return "HTTP Response";
-//            case 1:
-//                return "URL";
-                default:
-                    return "";
+            if (columnIndex == 0) {
+                return "HTTP Response";
+            } else {
+                return "";
             }
         }
 
@@ -214,18 +200,16 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             // Adele note: ignoring rowIndex for now
             LogEntry logEntry = log2.get(rowIndex);
 
-            switch (columnIndex) {
-                case 0:
-                    String s = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
-                    return s; //callbacks.getToolName(logEntry.tool);
-                case 1:
-                    return logEntry.url.toString();
-                default:
-                    return "";
-
-                //return log2.get(rowIndex);
-
+            if (columnIndex == 0) {
+                for (rowIndex = 0; rowIndex <= 5; rowIndex++) {
+                    String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
+                    String t = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
+                    if (logTable1.getValueAt(rowIndex, columnIndex).equals(s)) {
+                        return t; //callbacks.getToolName(logEntry.tool);
+                    }
+                }
             }
+            return "";
         }
     }
 
@@ -252,9 +236,7 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         }
     }
 
-        //
 // class to hold details of each log entry
-//
 
     private class Table2 extends JTable {
         public String tableName;
@@ -271,7 +253,6 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         public void changeSelection(int row, int col, boolean toggle, boolean extend) {
             // show the log entry for the selected row
             LogEntry logEntry = this.table_log.get(row);
-            //String row_data = this.table_log.get(row);
             requestViewer.setMessage(logEntry.requestResponse.getRequest(), true);
             responseViewer.setMessage(logEntry.requestResponse.getResponse(), false);
             currentlyDisplayedItem = logEntry.requestResponse;
