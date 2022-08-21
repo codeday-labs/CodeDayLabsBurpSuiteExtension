@@ -1,4 +1,5 @@
 package burp;
+
 import java.awt.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -9,20 +10,14 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 
 public class BurpExtender extends AbstractTableModel implements IBurpExtender, IHttpListener, ITab, IMessageEditorController {
-    private final List<LogEntry> log1 = new ArrayList<LogEntry>();
-    private final List<LogEntry> log2 = new ArrayList<LogEntry>();
-//    private final List<String> log2 = new ArrayList<String>() { // some sample data
-//
-//        {
-//
-//        }
-//    };
-    private final Table logTable1 = new Table(BurpExtender.this, "log table 1", log1);
-    private final Table2 logTable2 = new Table2(new MyTableModel(), "log table 2", log2);
+    private final List<LogEntry> apiLog = new ArrayList<LogEntry>();
+    private final List<LogEntry> httpResponseLog = new ArrayList<LogEntry>();
+    private final Table apiLogTable = new Table(new MyTableModel("API Routes"), apiLog);
+    private final Table httpResponseTable = new Table(new MyTableModel("HTTP Response"), httpResponseLog);
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
-    private JSplitPane splitPane;
-    private JSplitPane splitPane2;
+    private JSplitPane splitPaneLeft;
+    private JSplitPane splitPaneRight;
     private IMessageEditor requestViewer;
     private IMessageEditor responseViewer;
     private IHttpRequestResponse currentlyDisplayedItem;
@@ -31,38 +26,36 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         this.callbacks = callbacks;
         helpers = callbacks.getHelpers();
         callbacks.setExtensionName("sample extension");
-
         SwingUtilities.invokeLater(new Runnable() {
-
             @Override
             public void run() {
-                splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-                splitPane2 = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-                splitPane.setDividerLocation(300);
+                splitPaneLeft = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+                splitPaneRight = new JSplitPane(JSplitPane.VERTICAL_SPLIT); //right component
+                splitPaneLeft.setDividerLocation(300);
 
-                // table of log entries
-                JScrollPane scrollPane = new JScrollPane(logTable1);
-                JScrollPane scrollPane2 = new JScrollPane(logTable2);
-                splitPane.setTopComponent(scrollPane);
-                splitPane.setBottomComponent(scrollPane2);
-                // tabs with request/response viewers
-                JTabbedPane tabs = new JTabbedPane();
+                // table of log entries on the left side of the split pane
+                JScrollPane apiLogScrollPane = new JScrollPane(apiLogTable);
+                JScrollPane httpResponseScrollPane = new JScrollPane(httpResponseTable);
+                splitPaneLeft.setTopComponent(apiLogScrollPane);
+                splitPaneLeft.setBottomComponent(httpResponseScrollPane);
+
+                // tabs with request/response viewers on the right side of the split pane
+                JTabbedPane rightPaneTabs = new JTabbedPane();
                 requestViewer = callbacks.createMessageEditor(BurpExtender.this, false);
                 responseViewer = callbacks.createMessageEditor(BurpExtender.this, false);
-                tabs.addTab("Request", requestViewer.getComponent());
-                tabs.addTab("Response", responseViewer.getComponent());
-                splitPane2.setRightComponent(tabs);
-
-                splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, splitPane, splitPane2);
+                rightPaneTabs.addTab("Request", requestViewer.getComponent());
+                rightPaneTabs.addTab("Response", responseViewer.getComponent());
+                splitPaneRight.setRightComponent(rightPaneTabs);
+                splitPaneLeft = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, splitPaneLeft, splitPaneRight);
 
                 // customize our UI components
-                callbacks.customizeUiComponent(splitPane);
-                callbacks.customizeUiComponent(splitPane2);
-                callbacks.customizeUiComponent(logTable1);
-                callbacks.customizeUiComponent(logTable2);
-                callbacks.customizeUiComponent(scrollPane);
-                callbacks.customizeUiComponent(scrollPane2);
-                callbacks.customizeUiComponent(tabs);
+                callbacks.customizeUiComponent(splitPaneLeft);
+                callbacks.customizeUiComponent(splitPaneRight);
+                callbacks.customizeUiComponent(apiLogTable);
+                callbacks.customizeUiComponent(httpResponseTable);
+                callbacks.customizeUiComponent(apiLogScrollPane);
+                callbacks.customizeUiComponent(httpResponseScrollPane);
+                callbacks.customizeUiComponent(rightPaneTabs);
 
                 callbacks.addSuiteTab(BurpExtender.this);
 
@@ -73,78 +66,34 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
     @Override
     public String getTabCaption() {
-        return "Test";
-    }
+        return "DTP Updated";
+    } //Dipendra, Taylor & Paul. ;)
 
     @Override
     public Component getUiComponent() {
-        return splitPane;
+        return splitPaneLeft;
     }
 
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo) {
         // only process responses
         if (!messageIsRequest) {
             // create a new log entry with the message details
-            synchronized (logTable1.table_log) {
-                int row = logTable1.table_log.size();
-                logTable1.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
+            //try {Thread.sleep(200);} catch (InterruptedException e) {/*Do Nothing.*/}
+            synchronized (apiLogTable.table_log) {
+                int row = apiLogTable.table_log.size();
+                apiLogTable.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
                         helpers.analyzeRequest(messageInfo).getUrl()));
                 fireTableRowsInserted(row, row);
             }
-            synchronized (logTable2.table_log) {
-                int row = logTable2.table_log.size();
-                logTable2.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
+            synchronized (httpResponseTable.table_log) {
+                int row = httpResponseTable.table_log.size();
+                httpResponseTable.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
                         helpers.analyzeRequest(messageInfo).getUrl()));
                 fireTableRowsInserted(row, row);
             }
         }
     }
 
-        //
-        // extend AbstractTableModel
-        //
-
-    @Override
-    public int getRowCount() {
-        return log1.size();
-    }
-
-    @Override
-    public int getColumnCount() {
-        return 1;
-    }
-
-    @Override
-    public String getColumnName(int columnIndex) {
-        switch (columnIndex) {
-            case 0:
-                return "API Routes";
-//            case 1:
-//                return "URL";
-            default:
-                return "";
-        }
-    }
-
-    @Override
-    public Class<?> getColumnClass(int columnIndex) {
-        return String.class;
-    }
-
-    @Override
-    public Object getValueAt(int rowIndex, int columnIndex) {
-        LogEntry logEntry = log1.get(rowIndex);
-
-        switch (columnIndex) {
-            case 0:
-                String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
-                return s; //callbacks.getToolName(logEntry.tool);
-            case 1:
-                return logEntry.url.toString();
-            default:
-                return "";
-        }
-    }
 
     @Override
     public byte[] getRequest() {
@@ -161,6 +110,22 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         return currentlyDisplayedItem.getHttpService();
     }
 
+    // Don't do anything with these. They're artifacts from a necessary (currently) thing we can't get rid of.
+    @Override
+    public int getRowCount() {
+        return 0;
+    }
+
+    @Override
+    public int getColumnCount() {
+        return 0;
+    }
+
+    @Override
+    public Object getValueAt(int rowIndex, int columnIndex) {
+        return null;
+    }
+
     private static class LogEntry {
         final int tool;
         final IHttpRequestResponsePersisted requestResponse;
@@ -173,35 +138,29 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         }
     }
 
-        //
-// extend JTable to handle cell selection
-//
-
     // Table for 2nd log set to use
     public class MyTableModel extends AbstractTableModel {
+        String tableName;
 
-        //
         // extend AbstractTableModel
-        //
+        MyTableModel(String name) {
+            tableName = name;
+        }
 
         @Override
-        public int getRowCount() { return log2.size(); }
+        public int getRowCount() {
+            return httpResponseLog.size();
+        }
 
         @Override
         public int getColumnCount() {
             return 1;
         }
 
+
         @Override
         public String getColumnName(int columnIndex) {
-            switch (columnIndex) {
-                case 0:
-                    return "HTTP Response";
-//            case 1:
-//                return "URL";
-                default:
-                    return "";
-            }
+            return tableName;
         }
 
         @Override
@@ -212,7 +171,7 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             // Adele note: ignoring rowIndex for now
-            LogEntry logEntry = log2.get(rowIndex);
+            LogEntry logEntry = httpResponseLog.get(rowIndex);
 
             switch (columnIndex) {
                 case 0:
@@ -222,9 +181,6 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
                     return logEntry.url.toString();
                 default:
                     return "";
-
-                //return log2.get(rowIndex);
-
             }
         }
     }
@@ -232,12 +188,13 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private class Table extends JTable {
         public String tableName;
         public List<LogEntry> table_log;
+        TableModel TM;
 
-        public Table(TableModel tableModel, String tableName, List<LogEntry> log) {
+        public Table(TableModel tableModel, List<LogEntry> log) {
             super(tableModel);
+            TM = tableModel;
             this.tableName = tableName;
             this.table_log = log;
-
         }
 
         @Override
@@ -248,33 +205,6 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             responseViewer.setMessage(logEntry.requestResponse.getResponse(), false);
             currentlyDisplayedItem = logEntry.requestResponse;
 
-            super.changeSelection(row, col, toggle, extend);
-        }
-    }
-
-        //
-// class to hold details of each log entry
-//
-
-    private class Table2 extends JTable {
-        public String tableName;
-        public List<LogEntry> table_log;
-
-        public Table2(TableModel tableModel, String tableName, List<LogEntry> log) {
-            super(tableModel);
-            this.tableName = tableName;
-            this.table_log = log;
-
-        }
-
-        @Override
-        public void changeSelection(int row, int col, boolean toggle, boolean extend) {
-            // show the log entry for the selected row
-            LogEntry logEntry = this.table_log.get(row);
-            //String row_data = this.table_log.get(row);
-            requestViewer.setMessage(logEntry.requestResponse.getRequest(), true);
-            responseViewer.setMessage(logEntry.requestResponse.getResponse(), false);
-            currentlyDisplayedItem = logEntry.requestResponse;
 
             super.changeSelection(row, col, toggle, extend);
         }
