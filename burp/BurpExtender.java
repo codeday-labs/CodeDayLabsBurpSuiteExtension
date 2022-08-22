@@ -198,16 +198,11 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             // Adele note: ignoring rowIndex for now
-            LogEntry logEntry = log2.get(rowIndex);
+            LogEntry logEntry = log1.get(rowIndex);
 
-            if (columnIndex == 0) {
-                for (rowIndex = 0; rowIndex <= 5; rowIndex++) {
-                    String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
-                    String t = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
-                    if (logTable1.getValueAt(rowIndex, columnIndex).equals(s)) {
-                        return t; //callbacks.getToolName(logEntry.tool);
-                    }
-                }
+            if (logTable1.isRowSelected(rowIndex)) {
+                String t = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
+                return t; //callbacks.getToolName(logEntry.tool);
             }
             return "";
         }
