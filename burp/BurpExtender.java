@@ -12,12 +12,12 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private final List<LogEntry> log1 = new ArrayList<LogEntry>();
     private final List<LogEntry> log2 = new ArrayList<LogEntry>();
 
-    private final Table logTable1 = new Table(BurpExtender.this, "log table 1", log1);
-    private final Table2 logTable2 = new Table2(new MyTableModel(), "log table 2", log2);
+    private final Table apiLogTable = new Table(BurpExtender.this, "log table 1", log1);
+    private final Table2 httpsResponseLogTable = new Table2(new MyTableModel(), "log table 2", log2);
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
-    private JSplitPane splitPane;
-    private JSplitPane splitPane2;
+    private JSplitPane leftSplitPane;
+    private JSplitPane rightSplitPane;
     private IMessageEditor requestViewer;
     private IMessageEditor responseViewer;
     private IHttpRequestResponse currentlyDisplayedItem;
@@ -31,15 +31,15 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
             @Override
             public void run() {
-                splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-                splitPane2 = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-                splitPane.setDividerLocation(300);
+                leftSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+                rightSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+                leftSplitPane.setDividerLocation(300);
 
                 // table of log entries
-                JScrollPane scrollPane = new JScrollPane(logTable1);
-                JScrollPane scrollPane2 = new JScrollPane(logTable2);
-                splitPane.setTopComponent(scrollPane);
-                splitPane.setBottomComponent(scrollPane2);
+                JScrollPane scrollPane = new JScrollPane(apiLogTable);
+                JScrollPane scrollPane2 = new JScrollPane(httpsResponseLogTable);
+                leftSplitPane.setTopComponent(scrollPane);
+                leftSplitPane.setBottomComponent(scrollPane2);
 
                 // tabs with request/response viewers
                 JTabbedPane tabs = new JTabbedPane();
@@ -47,15 +47,15 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
                 responseViewer = callbacks.createMessageEditor(BurpExtender.this, false);
                 tabs.addTab("Request", requestViewer.getComponent());
                 tabs.addTab("Response", responseViewer.getComponent());
-                splitPane2.setRightComponent(tabs);
+                rightSplitPane.setRightComponent(tabs);
 
-                splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, splitPane, splitPane2);
+                leftSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftSplitPane, rightSplitPane);
 
                 // customize our UI components
-                callbacks.customizeUiComponent(splitPane);
-                callbacks.customizeUiComponent(splitPane2);
-                callbacks.customizeUiComponent(logTable1);
-                callbacks.customizeUiComponent(logTable2);
+                callbacks.customizeUiComponent(leftSplitPane);
+                callbacks.customizeUiComponent(rightSplitPane);
+                callbacks.customizeUiComponent(apiLogTable);
+                callbacks.customizeUiComponent(httpsResponseLogTable);
                 callbacks.customizeUiComponent(scrollPane);
                 callbacks.customizeUiComponent(scrollPane2);
                 callbacks.customizeUiComponent(tabs);
@@ -74,25 +74,26 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
     @Override
     public Component getUiComponent() {
-        return splitPane;
+        return leftSplitPane;
     }
 
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo) {
         // only process responses
         if (!messageIsRequest) {
             // create a new log entry with the message details
-            synchronized (logTable1.table_log) {
-                int row = logTable1.table_log.size();
-                logTable1.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
+            synchronized (apiLogTable.table_log) {
+                int row = apiLogTable.table_log.size();
+                apiLogTable.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
                         helpers.analyzeRequest(messageInfo).getUrl()));
                 fireTableRowsInserted(row, row);
             }
-//            synchronized (logTable2.table_log) {
-//                int row = logTable2.table_log.size();
-//                logTable2.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
-//                        helpers.analyzeRequest(messageInfo).getUrl()));
-//                fireTableRowsInserted(row, row);
-//            }
+            synchronized (httpsResponseLogTable.table_log) {
+                int row = httpsResponseLogTable.table_log.size();
+                httpsResponseLogTable.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
+                        helpers.analyzeRequest(messageInfo).getUrl()));
+                fireTableRowsInserted(row, row);
+
+            }
         }
     }
 
