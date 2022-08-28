@@ -13,7 +13,7 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private final List<LogEntry> apiLog = new ArrayList<LogEntry>();
     private final List<LogEntry> httpResponseLog = new ArrayList<LogEntry>();
     private final Table apiLogTable = new Table(new MyTableModel("API Routes"), apiLog);
-    private final Table httpResponseTable = new Table(new MyTableModel("HTTP Response"), httpResponseLog);
+    private final Table httpResponseTable = new Table(new MyTableModel2("HTTP Response"), httpResponseLog);
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
     private JSplitPane splitPaneLeft;
@@ -94,7 +94,6 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         }
     }
 
-
     @Override
     public byte[] getRequest() {
         return currentlyDisplayedItem.getRequest();
@@ -126,6 +125,52 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         return null;
     }
 
+    // Table for 1st log set to use
+    public class MyTableModel extends AbstractTableModel {
+        String tableName;
+
+        // extend AbstractTableModel
+        MyTableModel(String name) {
+            tableName = name;
+        }
+
+        @Override
+        public int getRowCount() {
+            return apiLog.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return 1;
+        }
+
+        @Override
+        public String getColumnName(int columnIndex) {
+            return tableName;
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            return String.class;
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+
+            LogEntry logEntry = apiLog.get(rowIndex);
+
+            switch (columnIndex) {
+                case 0:
+                    String t = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
+                    return t; //callbacks.getToolName(logEntry.tool);
+                //case 1:
+                //return logEntry.url.toString();
+                default:
+                    return "";
+            }
+        }
+    }
+
     private static class LogEntry {
         final int tool;
         final IHttpRequestResponsePersisted requestResponse;
@@ -139,11 +184,11 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     }
 
     // Table for 2nd log set to use
-    public class MyTableModel extends AbstractTableModel {
+    public class MyTableModel2 extends AbstractTableModel {
         String tableName;
 
         // extend AbstractTableModel
-        MyTableModel(String name) {
+        MyTableModel2(String name) {
             tableName = name;
         }
 
@@ -156,7 +201,6 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         public int getColumnCount() {
             return 1;
         }
-
 
         @Override
         public String getColumnName(int columnIndex) {
@@ -171,14 +215,16 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             // Adele note: ignoring rowIndex for now
-            LogEntry logEntry = httpResponseLog.get(rowIndex);
+            LogEntry logEntry = apiLog.get(rowIndex);
 
             switch (columnIndex) {
                 case 0:
-                    String s = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
-                    return s; //callbacks.getToolName(logEntry.tool);
-                case 1:
-                    return logEntry.url.toString();
+                    if (apiLogTable.isRowSelected(rowIndex)) {
+                        String u = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
+                        return u; //callbacks.getToolName(logEntry.tool);
+                    }
+                    //case 1:
+                    //return logEntry.url.toString();
                 default:
                     return "";
             }
