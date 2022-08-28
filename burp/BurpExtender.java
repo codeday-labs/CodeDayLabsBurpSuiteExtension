@@ -3,6 +3,8 @@ import java.awt.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -21,6 +23,9 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private IMessageEditor requestViewer;
     private IMessageEditor responseViewer;
     private IHttpRequestResponse currentlyDisplayedItem;
+
+    private Dictionary<Integer, String> dict = new Hashtable<Integer, String>();
+    private Dictionary<Integer, String> dict2 = new Hashtable<Integer, String>();
 
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
         this.callbacks = callbacks;
@@ -130,7 +135,13 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
         if (columnIndex == 0) {
             String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
-            return s; //callbacks.getToolName(logEntry.tool);
+            String[] tokens = s.split(" ");
+            dict.put(0, tokens[0]);
+            dict.put(1, tokens[1]);
+            dict.put(2, tokens[2]);
+            //String t = dict.toString();                                                                                                                                                                                                             ;
+            //String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
+            return dict.get(0) + " " + dict.get(1); //callbacks.getToolName(logEntry.tool);
         }
         else {
             return "";
@@ -202,7 +213,12 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
             if (logTable1.isRowSelected(rowIndex)) {
                 String t = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
-                return t; //callbacks.getToolName(logEntry.tool);
+                String[] tokens = t.split(" ");
+                dict2.put(0, tokens[0]);
+                dict2.put(1, tokens[1]);
+                //String t = dict2.toString();
+                //String t = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
+                return dict2.get(0) + " " + dict2.get(1); //callbacks.getToolName(logEntry.tool);
             }
             return "";
         }
