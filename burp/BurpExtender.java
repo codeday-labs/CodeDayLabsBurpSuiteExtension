@@ -3,6 +3,8 @@ import java.awt.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -21,6 +23,9 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private IMessageEditor requestViewer;
     private IMessageEditor responseViewer;
     private IHttpRequestResponse currentlyDisplayedItem;
+    private Dictionary< Integer, String> dic1 = new Hashtable<Integer, String>();
+    private Dictionary< Integer, String> dic2 = new Hashtable<Integer, String>();
+
 
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
         this.callbacks = callbacks;
@@ -133,6 +138,10 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             case 0:
                 String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
                // return s; //callbacks.getToolName(logEntry.tool);
+                String[] identifier = s.split("");
+                dic1.put(0, identifier[0]);
+                dic1.put(1, identifier[1]);
+                return new StringBuilder().append(dic1.get(0)).append(" ").append(dic1.get(1)).toString();
             case 1:
                 return logEntry.url.toString();
             default:
@@ -211,11 +220,19 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         public Object getValueAt(int rowIndex, int columnIndex) {
             // Adele note: ignoring rowIndex for now
             LogEntry logEntry = log2.get(rowIndex);
+            System.out.println(logEntry);
 
             switch (columnIndex) {
                 case 0:
+
                     String s = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
-                    return s; //callbacks.getToolName(logEntry.tool);
+                    String[] identifier = s.split("");
+                    dic2.put(0, identifier[0]);
+                    dic2.put(1, identifier[1]);
+
+                    return new StringBuilder().append(dic2.get(0)).append(" ").append(dic2.get(1)).toString();
+
+                    // return s; //callbacks.getToolName(logEntry.tool);
                 case 1:
                     return logEntry.url.toString();
                 default:
