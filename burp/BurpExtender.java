@@ -3,24 +3,17 @@ package burp;
 import java.awt.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.Hashtable;
-import java.util.List;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableModel;
 
 public class BurpExtender extends AbstractTableModel implements IBurpExtender, IHttpListener, ITab, IMessageEditorController {
-//    private final List<LogEntry> log1 = new ArrayList<>();
-//    private final List<LogEntry> log2 = new ArrayList<>();
-
-//    private final Table logTable1 = new Table(BurpExtender.this, "log table 1", log1);
-//    private final Table2 logTable2 = new Table2(new MyTableModel(), "log table 2", log2);
-    private String[] apiName = {"API Path"};
-    private String[] httpName = {"HTTP Response"};
-    private DefaultTableModel apiTableModel = new DefaultTableModel(apiName, 0);
-    private DefaultTableModel httpTableModel = new DefaultTableModel(httpName, 0);
+    private final String[] apiName = {"API Path"};
+    private final String[] httpName = {"HTTP Response"};
+    private final DefaultTableModel apiTableModel = new DefaultTableModel(apiName, 0);
+    private final DefaultTableModel httpTableModel = new DefaultTableModel(httpName, 0);
     private final JTable apiModelJTable = new JTable(apiTableModel);
     private final JTable httpResponseJTable = new JTable(httpTableModel);
     private IBurpExtenderCallbacks callbacks;
@@ -32,11 +25,10 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private IMessageEditor responseViewer;
     private IHttpRequestResponse currentlyDisplayedItem;
 
-    private Dictionary<Integer, String> dict = new Hashtable<Integer, String>();
-    private Dictionary<Integer, String> dict2 = new Hashtable<Integer, String>();
+    private final Dictionary<String, LogEntryDict> dict = new Hashtable<>();
+    private final Dictionary<Integer, String> dict2 = new Hashtable<Integer, String>();
 
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
-
         this.callbacks = callbacks;
         helpers = callbacks.getHelpers();
         callbacks.setExtensionName("sample extension");
@@ -91,57 +83,54 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo) {
         // only process responses
         if (!messageIsRequest) {
+            int row = apiModelJTable.getRowCount();
+            LogEntry le = new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
+                    helpers.analyzeRequest(messageInfo).getUrl());
+            String parsedRequest = new String(le.requestResponse.getRequest(), StandardCharsets.UTF_8);
+            String[] requestTokens = parsedRequest.split(" ");
+            parsedRequest = requestTokens[0] + " " + requestTokens[1];
+            StringBuilder sbApi = new StringBuilder();
 
-//            @Override
-//            public Object getValueAt ( int rowIndex, int columnIndex){
-//                LogEntry logEntry = log1.get(rowIndex);
+            sbApi.append(parsedRequest);
+            sbApi.append(" ");
+            String strEntryApi = sbApi.toString();
+            apiTableModel.addRow(new Object[]{strEntryApi});
+            apiTableModel.fireTableRowsInserted(row, row);
 
-//                if (columnIndex == 0) {
-//                    String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
-//                    String[] tokens = s.split(" ");
-//                    dict.put(0, tokens[0]);
-//                    dict.put(1, tokens[1]);
-//                    dict.put(2, tokens[2]);
-//                    //String t = dict.toString();                                                                                                                                                                                                             ;
-//                    //String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
-//                    return dict.get(0) + " " + dict.get(1); //callbacks.getToolName(logEntry.tool);
-//                } else {
-//                    return "";
-                    int row = apiModelJTable.getRowCount();
-                    LogEntry le = new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
-                            helpers.analyzeRequest(messageInfo).getUrl());
-                    StringBuilder sb = new StringBuilder();
+            /*We need to modify the section below here to have logic on selection of the item to display on right
+                    * pane so we can pass the call to it from the first log. There's a few ways to go about this.
+                    *
+                    * Right now this is just placeholder info (It's the same data). */
+            int row1 = httpResponseJTable.getRowCount();
+            LogEntry le1 = new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
+                    helpers.analyzeRequest(messageInfo).getUrl());
+            String parsedResponse = new String(le.requestResponse.getResponse(), StandardCharsets.UTF_8);
+            String[] responseTokens = parsedResponse.split(" ");
+            parsedResponse = responseTokens[0] + " " + responseTokens[1];
+            StringBuilder sbHttp = new StringBuilder();
+            LogEntryDict logDict = new LogEntryDict(parsedResponse, messageInfo);
+            dict.put(parsedRequest, logDict);
 
-                    sb.append(callbacks.getToolName(le.tool));
-                    sb.append(" ");
-                    sb.append(le.url);
-                    sb.append(" ");
-                    String strEntry = sb.toString();
-                    apiTableModel.addRow(new Object[]{strEntry});
-                    apiTableModel.fireTableRowsInserted(row, row);
+            sbHttp.append(parsedResponse);
+            sbHttp.append(" ");
 
-                    /*We need to modify the section below here to have logic on selection of the item to display on right
-                     * pane so we can pass the call to it from the first log. There's a few ways to go about this.
-                     *
-                     * Right now this is just placeholder info (It's the same data). */
-                    //int row1 = httpResponseJTable.getRowCount();
-                    LogEntry le1 = new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
-                            helpers.analyzeRequest(messageInfo).getUrl());
-                    sb.append(callbacks.getToolName(le1.tool));
+            /*
+               Careful. I've got this next line set up to be the same string as above. Once we go to
+               start making this useful we'll need to update that. This whole section should be changed.
+               * */
+            String strEntryHttp = sbHttp.toString();
+            httpTableModel.addRow(new Object[]{strEntryHttp});
+            httpTableModel.fireTableRowsInserted(row1, row1);
 
-                /*
-                Careful. I've got this next line set up to be the same string as above. Once we go to
-                start making this useful we'll need to update that. This whole section should be changed.
-                * */
-                    httpTableModel.addRow(new Object[]{strEntry});
-                    fireTableRowsInserted(row, row);
-
-                    // Update the tabs. Need to get the logic for this right. Not currently updating correctly.
-                    requestViewer.setMessage(le1.requestResponse.getRequest(), true);
-                    responseViewer.setMessage(le1.requestResponse.getResponse(), false);
-                    currentlyDisplayedItem = le1.requestResponse;
-                }
-            }
+            // Update the tabs. Need to get the logic for this right. Not currently updating correctly.
+            requestViewer.setMessage(dict.get(parsedRequest).requestResponse.getRequest(), true);
+            //requestViewer.setMessage(le1.requestResponse.getRequest(), true);
+            responseViewer.setMessage(dict.get(parsedRequest).requestResponse.getResponse(), false);
+//            responseViewer.setMessage(le1.requestResponse.getResponse(), false);
+            currentlyDisplayedItem = dict.get(parsedRequest).requestResponse;
+//            currentlyDisplayedItem = le1.requestResponse;
+        }
+    }
 
             @Override
             public byte[] getRequest() {
@@ -170,23 +159,9 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
                 }
             }
 
-//                @Override
-//                public Object getValueAt(int rowIndex, int columnIndex) {
-//                    // Adele note: ignoring rowIndex for now
-//                    LogEntry logEntry = log1.get(rowIndex);
-//
-//                    if (logTable1.isRowSelected(rowIndex)) {
-//                        String t = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
-//                        String[] tokens = t.split(" ");
-//                        dict2.put(0, tokens[0]);
-//                        dict2.put(1, tokens[1]);
-//                        //String t = dict2.toString();
-//                        //String t = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
-//                        return dict2.get(0) + " " + dict2.get(1); //callbacks.getToolName(logEntry.tool);
-//                    }
-//                    return "";
-//                }
-//            }
+                private record LogEntryDict(String httpResponse, IHttpRequestResponse requestResponse) {
+
+                }
 
                 private record LogEntry(int tool, IHttpRequestResponsePersisted requestResponse, URL url) {
                 }
