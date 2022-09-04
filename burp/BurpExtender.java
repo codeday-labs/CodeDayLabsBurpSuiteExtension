@@ -26,7 +26,6 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private IHttpRequestResponse currentlyDisplayedItem;
 
     private final Dictionary<String, LogEntryDict> dict = new Hashtable<>();
-    private final Dictionary<Integer, String> dict2 = new Hashtable<Integer, String>();
 
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
         this.callbacks = callbacks;
@@ -86,9 +85,9 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             int row = apiModelJTable.getRowCount();
             LogEntry le = new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
                     helpers.analyzeRequest(messageInfo).getUrl());
-            String parsedRequest = new String(le.requestResponse.getRequest(), StandardCharsets.UTF_8);
-            String[] requestTokens = parsedRequest.split(" ");
-            parsedRequest = requestTokens[0] + " " + requestTokens[1];
+            String request = new String(le.requestResponse.getRequest(), StandardCharsets.UTF_8);
+            String[] requestTokens = request.split(" ");
+            String parsedRequest = requestTokens[0] + " " + requestTokens[1];
             StringBuilder sbApi = new StringBuilder();
 
             sbApi.append(parsedRequest);
@@ -104,10 +103,11 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             int row1 = httpResponseJTable.getRowCount();
             LogEntry le1 = new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
                     helpers.analyzeRequest(messageInfo).getUrl());
-            String parsedResponse = new String(le.requestResponse.getResponse(), StandardCharsets.UTF_8);
-            String[] responseTokens = parsedResponse.split(" ");
-            parsedResponse = responseTokens[0] + " " + responseTokens[1];
+            String response = new String(le.requestResponse.getResponse(), StandardCharsets.UTF_8);
+            String[] responseTokens = response.split(" ");
+            String parsedResponse = responseTokens[0] + " " + responseTokens[1];
             StringBuilder sbHttp = new StringBuilder();
+
             LogEntryDict logDict = new LogEntryDict(parsedResponse, messageInfo);
             dict.put(parsedRequest, logDict);
 
@@ -160,7 +160,6 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             }
 
                 private record LogEntryDict(String httpResponse, IHttpRequestResponse requestResponse) {
-
                 }
 
                 private record LogEntry(int tool, IHttpRequestResponsePersisted requestResponse, URL url) {
