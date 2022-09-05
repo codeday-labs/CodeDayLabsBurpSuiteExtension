@@ -148,6 +148,7 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     public void setSelectedData(IHttpRequestResponse messageInfo){
 
         // Change happened in the top left pane.
+        //Need to figure out the logic on updating tables here based on the dictionaries.
         if(apiTableSelectedRow != apiModelJTable.getSelectedRow()){
             apiTableSelectedRow = apiModelJTable.getSelectedRow();
             httpTableSelectedRow = 0;
