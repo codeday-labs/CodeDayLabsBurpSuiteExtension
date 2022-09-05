@@ -1,6 +1,5 @@
 package burp;
-
-import java.awt.*;
+import java.awt.Component;
 import java.net.URL;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -11,16 +10,29 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private String[] httpName = {"HTTP Response"};
     private DefaultTableModel apiTableModel = new DefaultTableModel(apiName, 0);
     private DefaultTableModel httpTableModel = new DefaultTableModel(httpName, 0);
-    private final JTable apiModelJTable = new JTable(apiTableModel);
-    private final JTable httpResponseJTable = new JTable(httpTableModel);
+    private final JTable apiModelJTable = new JTable(apiTableModel)
+    {
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable httpResponseJTable = new JTable(httpTableModel)
+    {
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
-    private JSplitPane splitPaneLeft;
+    private JSplitPane splitPaneLeftAndRight;
     private JSplitPane splitPaneRight;
-    private JSplitPane splitPaneLeftContainer;
+    private JSplitPane splitPaneLeft;
     private IMessageEditor requestViewer;
     private IMessageEditor responseViewer;
     private IHttpRequestResponse currentlyDisplayedItem;
+    private Integer apiTableSelectedRow = 0;
+    private Integer httpTableSelectedRow = 0;
+
 
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
 
@@ -30,15 +42,19 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                splitPaneLeftContainer = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-                splitPaneRight = new JSplitPane(JSplitPane.VERTICAL_SPLIT); //right component
-                splitPaneLeftContainer.setDividerLocation(300);
+                apiModelJTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+                httpResponseJTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+                httpResponseJTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+                splitPaneLeft = new JSplitPane(JSplitPane.VERTICAL_SPLIT); //Left Component
+                splitPaneRight = new JSplitPane(JSplitPane.VERTICAL_SPLIT); //Right component
+                splitPaneLeft.setDividerLocation(300);
 
                 // table of log entries on the left side of the split pane
                 JScrollPane apiLogScrollPane = new JScrollPane(apiModelJTable);
                 JScrollPane httpResponseScrollPane = new JScrollPane(httpResponseJTable);
-                splitPaneLeftContainer.setTopComponent(apiLogScrollPane);
-                splitPaneLeftContainer.setBottomComponent(httpResponseScrollPane);
+                splitPaneLeft.setTopComponent(apiLogScrollPane);
+                splitPaneLeft.setBottomComponent(httpResponseScrollPane);
 
                 // tabs with request/response viewers on the right side of the split pane
                 JTabbedPane rightPaneTabs = new JTabbedPane();
@@ -47,10 +63,12 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
                 rightPaneTabs.addTab("Request", requestViewer.getComponent());
                 rightPaneTabs.addTab("Response", responseViewer.getComponent());
                 splitPaneRight.setRightComponent(rightPaneTabs);
-                splitPaneLeft = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, splitPaneLeftContainer, splitPaneRight);
+
+                //Everything that's displayed in the tab.
+                splitPaneLeftAndRight = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, splitPaneLeft, splitPaneRight);
 
                 // customize our UI components
-                callbacks.customizeUiComponent(splitPaneLeft);
+                callbacks.customizeUiComponent(splitPaneLeftAndRight);
                 callbacks.customizeUiComponent(splitPaneRight);
                 callbacks.customizeUiComponent(apiModelJTable);
                 callbacks.customizeUiComponent(httpResponseJTable);
@@ -72,18 +90,26 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
     @Override
     public Component getUiComponent() {
-        return splitPaneLeft;
+        return splitPaneLeftAndRight;
     }
 
+    /*
+        I think what we need to do here is just actually process the message. That is to say parse it out, and call the
+        other method(s) to do their part.
+    */
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo) {
         // only process responses
         if (!messageIsRequest) {
+
             int row = apiModelJTable.getRowCount();
+
             LogEntry le = new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
                     helpers.analyzeRequest(messageInfo).getUrl());
+
             StringBuilder sb = new StringBuilder();
 
             sb.append(callbacks.getToolName(le.tool));
+            sb.append(helpers.analyzeRequest(messageInfo).getUrl());
             sb.append(" ");
             sb.append(le.url);
             sb.append(" ");
@@ -104,13 +130,35 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
                 Careful. I've got this next line set up to be the same string as above. Once we go to
                 start making this useful we'll need to update that. This whole section should be changed.
                 * */
+
             httpTableModel.addRow(new Object[]{strEntry});
             fireTableRowsInserted(row, row);
 
-            // Update the tabs. Need to get the logic for this right. Not currently updating correctly.
+            /* Update the tabs. This is where we put the info we get from the lookup operation.
+                this can probably go in the same method we have (setSelectedData) to make it happen.
+            */
             requestViewer.setMessage(le1.requestResponse.getRequest(), true);
             responseViewer.setMessage(le1.requestResponse.getResponse(), false);
             currentlyDisplayedItem = le1.requestResponse;
+        }
+        setSelectedData(messageInfo);
+    }
+
+    // find out what to display. Called by the processHttpMessage and getValueAt.
+    public void setSelectedData(IHttpRequestResponse messageInfo){
+
+        // Change happened in the top left pane.
+        if(apiTableSelectedRow != apiModelJTable.getSelectedRow()){
+            apiTableSelectedRow = apiModelJTable.getSelectedRow();
+            httpTableSelectedRow = 0;
+        }
+        // See if anything has changed in bottom left pane.
+        else{
+            /*/Select the data from the top left pane as key, and with the list of values in the bottom
+               select the one that corresponds to the currently selected value (httpTableSelectedRow), and display
+               the information relevant to it.
+            * */
+
         }
     }
 
@@ -129,6 +177,9 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         return currentlyDisplayedItem.getHttpService();
     }
 
+
+    /* We need to look at overriding this so we can call the custom method we use for processing messages. Maybe.
+     */
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
         Object logEntry = apiModelJTable.getValueAt(rowIndex, columnIndex);
