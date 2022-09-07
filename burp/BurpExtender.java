@@ -1,69 +1,67 @@
 package burp;
+
 import java.awt.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.Hashtable;
-import java.util.List;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableModel;
+import javax.swing.table.DefaultTableModel;
 
-public class BurpExtender extends AbstractTableModel implements IBurpExtender, IHttpListener, ITab, IMessageEditorController {
-    private final List<LogEntry> log1 = new ArrayList<LogEntry>();
-    private final List<LogEntry> log2 = new ArrayList<LogEntry>();
-
-    private final Table apiLogTable = new Table(BurpExtender.this, "log table 1", log1);
-    private final Table2 httpsResponseLogTable = new Table2(new MyTableModel(), "log table 2", log2);
+public class BurpExtender<logEntryDic2> extends AbstractTableModel implements IBurpExtender, IHttpListener, ITab, IMessageEditorController {
+    private final String[] apiName = {"API Path"};
+    private final String[] httpName = {"HTTP Response"};
+    private final DefaultTableModel apiTableModel = new DefaultTableModel(apiName, 0);
+    private final DefaultTableModel httpTableModel = new DefaultTableModel(httpName, 0);
+    private final JTable apiModelJTable = new JTable(apiTableModel);
+    private final JTable httpResponseJTable = new JTable(httpTableModel);
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
-    private JSplitPane leftSplitPane;
-    private JSplitPane rightSplitPane;
+    private JSplitPane splitPaneLeft;
+    private JSplitPane splitPaneRight;
+    private JSplitPane splitPaneLeftContainer;
     private IMessageEditor requestViewer;
     private IMessageEditor responseViewer;
     private IHttpRequestResponse currentlyDisplayedItem;
-    private Dictionary< Integer, String> dic1 = new Hashtable<Integer, String>();
-    private Dictionary< Integer, String> dic2 = new Hashtable<Integer, String>();
 
+    private final Dictionary<String, LogEntryDic1> dic1 = new Hashtable<>();
+    private Dictionary< String, logEntryDic2> dic2 = new Hashtable<>();
 
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
         this.callbacks = callbacks;
         helpers = callbacks.getHelpers();
         callbacks.setExtensionName("sample extension");
-
         SwingUtilities.invokeLater(new Runnable() {
-
             @Override
             public void run() {
-                leftSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-                rightSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-                leftSplitPane.setDividerLocation(300);
+                splitPaneLeftContainer = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+                splitPaneRight = new JSplitPane(JSplitPane.VERTICAL_SPLIT); //right component
+                splitPaneLeftContainer.setDividerLocation(300);
 
-                // table of log entries
-                JScrollPane scrollPane = new JScrollPane(apiLogTable);
-                JScrollPane scrollPane2 = new JScrollPane(httpsResponseLogTable);
-                leftSplitPane.setTopComponent(scrollPane);
-                leftSplitPane.setBottomComponent(scrollPane2);
+                // table of log entries on the left side of the split pane
+                JScrollPane apiLogScrollPane = new JScrollPane(apiModelJTable);
+                JScrollPane httpResponseScrollPane = new JScrollPane(httpResponseJTable);
+                splitPaneLeftContainer.setTopComponent(apiLogScrollPane);
+                splitPaneLeftContainer.setBottomComponent(httpResponseScrollPane);
 
-                // tabs with request/response viewers
-                JTabbedPane tabs = new JTabbedPane();
+                // tabs with request/response viewers on the right side of the split pane
+                JTabbedPane rightPaneTabs = new JTabbedPane();
                 requestViewer = callbacks.createMessageEditor(BurpExtender.this, false);
                 responseViewer = callbacks.createMessageEditor(BurpExtender.this, false);
-                tabs.addTab("Request", requestViewer.getComponent());
-                tabs.addTab("Response", responseViewer.getComponent());
-                rightSplitPane.setRightComponent(tabs);
-
-                leftSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftSplitPane, rightSplitPane);
+                rightPaneTabs.addTab("Request", requestViewer.getComponent());
+                rightPaneTabs.addTab("Response", responseViewer.getComponent());
+                splitPaneRight.setRightComponent(rightPaneTabs);
+                splitPaneLeft = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, splitPaneLeftContainer, splitPaneRight);
 
                 // customize our UI components
-                callbacks.customizeUiComponent(leftSplitPane);
-                callbacks.customizeUiComponent(rightSplitPane);
-                callbacks.customizeUiComponent(apiLogTable);
-                callbacks.customizeUiComponent(httpsResponseLogTable);
-                callbacks.customizeUiComponent(scrollPane);
-                callbacks.customizeUiComponent(scrollPane2);
-                callbacks.customizeUiComponent(tabs);
+                callbacks.customizeUiComponent(splitPaneLeft);
+                callbacks.customizeUiComponent(splitPaneRight);
+                callbacks.customizeUiComponent(apiModelJTable);
+                callbacks.customizeUiComponent(httpResponseJTable);
+                callbacks.customizeUiComponent(apiLogScrollPane);
+                callbacks.customizeUiComponent(httpResponseScrollPane);
+                callbacks.customizeUiComponent(rightPaneTabs);
 
                 callbacks.addSuiteTab(BurpExtender.this);
 
@@ -74,78 +72,64 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
 
     @Override
     public String getTabCaption() {
-        return "Test";
-    }
+        return "DTP Updated";
+    } //Dipendra, Taylor & Paul. ;)
 
     @Override
     public Component getUiComponent() {
-        return leftSplitPane;
+        return splitPaneLeft;
     }
 
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo) {
         // only process responses
         if (!messageIsRequest) {
-            // create a new log entry with the message details
-            synchronized (apiLogTable.table_log) {
-                int row = apiLogTable.table_log.size();
-                apiLogTable.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
-                        helpers.analyzeRequest(messageInfo).getUrl()));
-                fireTableRowsInserted(row, row);
-            }
-            synchronized (httpsResponseLogTable.table_log) {
-                int row = httpsResponseLogTable.table_log.size();
-                httpsResponseLogTable.table_log.add(new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
-                        helpers.analyzeRequest(messageInfo).getUrl()));
-                fireTableRowsInserted(row, row);
+            int row = apiModelJTable.getRowCount();
+            LogEntry le = new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
+                    helpers.analyzeRequest(messageInfo).getUrl());
+            String request = new String(le.requestResponse.getRequest(), StandardCharsets.UTF_8);
+            String[] identifier = request.split(" ");
+            String parsedRequest = identifier[0] + " " + identifier[1];
+            StringBuilder sbApi = new StringBuilder();
 
-            }
-        }
-    }
+            sbApi.append(parsedRequest);
+            sbApi.append(" ");
+            String strEntryApi = sbApi.toString();
+            apiTableModel.addRow(new Object[]{strEntryApi});
+            apiTableModel.fireTableRowsInserted(row, row);
 
+            /*We need to modify the section below here to have logic on selection of the item to display on right
+             * pane so we can pass the call to it from the first log. There's a few ways to go about this.
+             *
+             * Right now this is just placeholder info (It's the same data). */
+            int row1 = httpResponseJTable.getRowCount();
+            LogEntry le1 = new LogEntry(toolFlag, callbacks.saveBuffersToTempFiles(messageInfo),
+                    helpers.analyzeRequest(messageInfo).getUrl());
+            String response = new String(le.requestResponse.getResponse(), StandardCharsets.UTF_8);
+            String[] responseTokens = response.split(" ");
+            String parsedResponse = responseTokens[0] + " " + responseTokens[1];
+            StringBuilder sbHttp = new StringBuilder();
 
-    @Override
-    public int getRowCount() {
-        return log1.size();
-    }
+            LogEntryDic1 dic1 = new LogEntryDic1(parsedResponse, messageInfo);
+            this.dic1.put(parsedRequest, dic1);
 
-    @Override
-    public int getColumnCount() {
-        return 1;
-    }
+          //  LogEntryDic2 dic2 = new LogEntryDic1(parsedResponse, messageInfo);
+          //  this.dic2.put(parsedRequest, dic2);
 
-    @Override
-    public String getColumnName(int columnIndex) {
-        switch (columnIndex) {
-            case 0:
-                return "API Routes";
-//            case 1:
-//                return "URL";
-            default:
-                return "";
-        }
-    }
+            sbHttp.append(parsedResponse);
+            sbHttp.append(" ");
 
-    @Override
-    public Class<?> getColumnClass(int columnIndex) {
-        return String.class;
-    }
+            /*
+               Careful. I've got this next line set up to be the same string as above. Once we go to
+               start making this useful we'll need to update that. This whole section should be changed.
+               * */
+            String strEntryHttp = sbHttp.toString();
+            httpTableModel.addRow(new Object[]{strEntryHttp});
+            httpTableModel.fireTableRowsInserted(row1, row1);
 
-    @Override
-    public Object getValueAt(int rowIndex, int columnIndex) {
-        LogEntry logEntry = log1.get(rowIndex);
-
-        switch (columnIndex) {
-            case 0:
-                String s = new String(logEntry.requestResponse.getRequest(), StandardCharsets.UTF_8);
-               // return s; //callbacks.getToolName(logEntry.tool);
-                String[] identifier = s.split("");
-                dic1.put(0, identifier[0]);
-                dic1.put(1, identifier[1]);
-                return new StringBuilder().append(dic1.get(0)).append(" ").append(dic1.get(1)).toString();
-            case 1:
-                return logEntry.url.toString();
-            default:
-                return "";
+            // Update the tabs. Need to get the logic for this right. Not currently updating correctly.
+            requestViewer.setMessage(this.dic1.get(parsedRequest).requestResponse.getRequest(), true);
+            responseViewer.setMessage(this.dic1.get(parsedRequest).requestResponse.getResponse(), false);
+            currentlyDisplayedItem = this.dic1.get(parsedRequest).requestResponse;
         }
     }
 
@@ -164,143 +148,31 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
         return currentlyDisplayedItem.getHttpService();
     }
 
-    private static class LogEntry {
-        final int tool;
-        final IHttpRequestResponsePersisted requestResponse;
-        final URL url;
-
-
-
-        LogEntry(int tool, IHttpRequestResponsePersisted requestResponse, URL url) {
-            this.tool = tool;
-            this.requestResponse = requestResponse;
-            this.url = url;
-
+    @Override
+    public Object getValueAt(int rowIndex, int columnIndex){
+        Object logEntry = apiModelJTable.getValueAt(rowIndex, columnIndex);
+        if (columnIndex == 0) {
+            return logEntry;
+        } else {
+            return "";
         }
     }
 
-        //
-// extend JTable to handle cell selection
-//
-
-    // Table for 2nd log set to use
-    public class MyTableModel extends AbstractTableModel {
-
-        //
-        // extend AbstractTableModel
-        //
-
-
-        @Override
-        public int getRowCount() { return log2.size(); }
-
-        @Override
-        public int getColumnCount() {
-            return 1;
-        }
-
-        @Override
-        public String getColumnName(int columnIndex) {
-            switch (columnIndex) {
-                case 0:
-                    return "HTTP Response";
-//            case 1:
-//                return "URL";
-                default:
-                    return "";
-            }
-        }
-
-        @Override
-        public Class<?> getColumnClass(int columnIndex) {
-            return String.class;
-        }
-
-        @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
-            // Adele note: ignoring rowIndex for now
-            LogEntry logEntry = log2.get(rowIndex);
-            System.out.println(logEntry);
-
-            switch (columnIndex) {
-                case 0:
-
-                    String s = new String(logEntry.requestResponse.getResponse(), StandardCharsets.UTF_8);
-                    String[] identifier = s.split("");
-                    dic2.put(0, identifier[0]);
-                    dic2.put(1, identifier[1]);
-
-                    return new StringBuilder().append(dic2.get(0)).append(" ").append(dic2.get(1)).toString();
-
-                    // return s; //callbacks.getToolName(logEntry.tool);
-                case 1:
-                    return logEntry.url.toString();
-                default:
-                    return "";
-
-                // return log2.get(rowIndex);
-
-            }
-        }
+    private record LogEntryDic1(String httpResponse, IHttpRequestResponse requestResponse) {
     }
 
-    private class Table extends JTable {
-        public String tableName;
-        public List<LogEntry> table_log;
-
-        public Table(TableModel tableModel, String tableName, List<LogEntry> log) {
-            super(tableModel);
-            this.tableName = tableName;
-            this.table_log = log;
-
-        }
-
-        @Override
-        public void changeSelection(int row, int col, boolean toggle, boolean extend) {
-            // show the log entry for the selected row
-            LogEntry logEntry = this.table_log.get(row);
-            requestViewer.setMessage(logEntry.requestResponse.getRequest(), true);
-            responseViewer.setMessage(logEntry.requestResponse.getResponse(), false);
-            currentlyDisplayedItem = logEntry.requestResponse;
-
-            super.changeSelection(row, col, toggle, extend);
-        }
+    private record LogEntry(int tool, IHttpRequestResponsePersisted requestResponse, URL url) {
     }
 
-    //class LogEntry:
-//
-//    def init (self, tool, requestResponse, url):
-//        self._tool = tool
-//        self._requestResponse = requestResponse
-//        self._url = url
-//        return
-
-        //
-// class to hold details of each log entry
-//
-
-    private class Table2 extends JTable {
-        public String tableName;
-        public List<LogEntry> table_log;
-
-        public Table2(TableModel tableModel, String tableName, List<LogEntry> log) {
-            super(tableModel);
-            this.tableName = tableName;
-            this.table_log = log;
-
-        }
-
-        @Override
-        public void changeSelection(int row, int col, boolean toggle, boolean extend) {
-            // show the log entry for the selected row
-            LogEntry logEntry = this.table_log.get(row);
-            //String row_data = this.table_log.get(row);
-            requestViewer.setMessage(logEntry.requestResponse.getRequest(), true);
-            responseViewer.setMessage(logEntry.requestResponse.getResponse(), false);
-            currentlyDisplayedItem = logEntry.requestResponse;
-
-            super.changeSelection(row, col, toggle, extend);
-        }
+    // Don't do anything with these. They're artifacts from a necessary (currently) thing we can't get rid of.
+    @Override
+    public int getRowCount() {
+        return 0;
     }
+
+    @Override
+    public int getColumnCount() {
+        return 0;
+    }
+    // End artifacts. We may end up using those, but I have no purpose for them at the moment.
 }
-
