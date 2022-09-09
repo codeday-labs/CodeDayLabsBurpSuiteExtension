@@ -3,8 +3,8 @@ package burp;
 import java.awt.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Dictionary;
-import java.util.Hashtable;
+import java.util.ArrayList;
+import java.util.HashMap;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableModel;
@@ -37,8 +37,8 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
     private Integer apiTableSelectedRow = 0;
     private Integer httpTableSelectedRow = 0;
 
-    private final Dictionary<String, String> dictApi = new Hashtable<>();
-    private final Dictionary<String, LogEntryDict> dictHttp = new Hashtable<>();
+    private final HashMap<String, String> dictApi = new HashMap<>();
+    private final HashMap<String, ArrayList<LogEntryDict>> dictHttp = new HashMap<>();
 
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
         this.callbacks = callbacks;
@@ -128,9 +128,14 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             String parsedResponse = responseTokens[0] + " " + responseTokens[1];
             StringBuilder sbHttp = new StringBuilder();
 
+            ArrayList<LogEntryDict> logList = new ArrayList<>();
             LogEntryDict logDict = new LogEntryDict(parsedResponse, messageInfo);
+
             dictApi.put(request, parsedRequest);
-            dictHttp.put(parsedRequest, logDict);
+            if (dictApi.containsValue(parsedRequest)) {
+                logList.add(logDict);
+                dictHttp.put(parsedRequest, logList);
+            }
 
             sbHttp.append(parsedResponse);
             sbHttp.append(" ");
@@ -144,9 +149,9 @@ public class BurpExtender extends AbstractTableModel implements IBurpExtender, I
             httpTableModel.fireTableRowsInserted(row1, row1);
 
             // Update the tabs. Need to get the logic for this right. Not currently updating correctly.
-            requestViewer.setMessage(dictHttp.get(parsedRequest).requestResponse.getRequest(), true);
-            responseViewer.setMessage(dictHttp.get(parsedRequest).requestResponse.getResponse(), false);
-            currentlyDisplayedItem = dictHttp.get(parsedRequest).requestResponse;
+            requestViewer.setMessage(dictHttp.get(parsedRequest).get(httpTableSelectedRow).requestResponse.getRequest(), true);
+            responseViewer.setMessage(dictHttp.get(parsedRequest).get(httpTableSelectedRow).requestResponse.getResponse(), false);
+            currentlyDisplayedItem = dictHttp.get(parsedRequest).get(httpTableSelectedRow).requestResponse;
         }
         setSelectedData(messageInfo);
     }
