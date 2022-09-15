@@ -1,1 +1,1 @@
-# Hello from local to CodeDayLabsBurpSuiteExtension Hello
+# Hello from local to CodeDayLabsBurpSuiteExtension
